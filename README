@@ -8,6 +8,12 @@ example is provided under the Examples directory to highlight the two-pulse
 laser approach. This update was done by Mewael Isiet at the University of
 British Columbia (2024). 
 
+TECHNICAL DETAILS:
+
+        VERSIONS:
+
+                - LAMMPS (lammps-12Dec2018.tar.gz)
+
 Contact us at:
 mponga@mech.ubc.ca 
 
