@@ -1,0 +1,14 @@
+This package implements the local two-temperature model in molecular dynamics (l2T-MD) for the LAMMPS code. 
+The package was developed by Mauricio Ponga and Mohammad W. Ullah at the University of British Columbia (2018). 
+The atomic style and set file are part of a much bigger implementation (LAMMPS-MXE).
+
+This package contains fixes that have been modified and/or created to incorporate the two
+laser pulse shock dynamics ("fix_laser.cpp" and "fix_laser_reverse.cpp"). An
+example is provided under the Examples directory to highlight the two-pulse
+laser approach. This update was done by Mewael Isiet at the University of
+British Columbia (2024). 
+
+Contact us at:
+mponga@mech.ubc.ca 
+
+Following LAMMPS spirit, we provide this package with GPL licence. 

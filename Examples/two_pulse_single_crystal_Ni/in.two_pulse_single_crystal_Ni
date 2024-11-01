@@ -1,0 +1,120 @@
+##-----------MATERIAL PROPERTIES---------------##
+
+variable        kB equal 8.617343e-5
+variable        K0 equal 0.0046394
+variable        lambda equal 6647.7e-12
+variable        G equal 2.2471e-6
+variable        pulse_depth equal 135
+variable        x_front_laser equal 0.0
+variable        x_reverse_laser equal 1.0
+variable        reflectivity equal 0.0
+variable        pulse_time equal 0.1
+variable	post_pulse_time equal 100
+variable        laser_fluence equal 1250  ## unit is J/m^2
+variable        fluence equal ${laser_fluence}*0.0624  ## unit is eV/A^2
+variable        Temp0 equal 300.0
+variable        Tmax equal 5e20
+
+##-----------INITIALIZATION---------------##
+
+units           metal
+comm_style      tiled
+boundary        p p p
+atom_style      atomic_mxe
+variable        lattice_parameter equal 3.52
+lattice         fcc ${lattice_parameter} origin 0 0 0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+region          box block 0 570 0 72 0 72
+create_box      1 box
+create_atoms    1 region box
+
+##-----------EAM POTENTIAL---------------##
+
+pair_style      eam/alloy
+pair_coeff      * * NiAlRe.eam.alloy Ni
+
+##-----------THERMO-OUTPUTS---------------##
+
+neighbor	1.0 bin
+neigh_modify    every 50 delay 0 check yes
+timestep        0.001 #ps
+
+variable  	V equal "vol" 
+variable        natoms equal "count(all)"
+variable        vatom equal "vol/v_natoms"
+
+compute      	KE all ke/atom
+compute 	PE all pe/atom
+compute		TH_V all temp/com
+
+##-----------NPT RELAXATION---------------##
+
+set             type 1 mxe_temperature ${Temp0}
+velocity        all create ${Temp0} 2431 loop geom
+thermo_style    custom step time temp pe ke vol press c_TH_V
+thermo          100
+fix             1 all npt temp ${Temp0} ${Temp0} 0.1 iso 0 0 1.0
+run             100000
+unfix           1
+change_box	all boundary s p p
+change_box      all x scale 1.2
+
+##-----------LATTICE TEMPERATURE & STRESS CHUNK---------------##
+
+variable        temp atom c_KE/1.5/${kB}
+
+variable        volume  equal lx*ly*lz
+variable        volume0 equal ${volume}
+variable        kf equal ${volume}/${volume0}
+
+variable        n   equal  step
+variable        sxx equal -${kf}*pxx/10000
+variable        syy equal -${kf}*pyy/10000
+variable        szz equal -${kf}*pzz/10000
+variable        sxy equal -${kf}*pxy/10000
+variable        sxz equal -${kf}*pxz/10000
+variable        syz equal -${kf}*pyz/10000
+
+compute         layers all chunk/atom bin/1d x lower 0.005 units reduced
+compute		stress_atom all stress/atom NULL
+compute         CN all cna/atom 3.0405297
+compute         vx all property/atom vx
+compute         temp_no_COM all temp/chunk layers temp com yes
+
+fix             2 all ave/chunk 1 10000 10000 layers v_temp file chunk/profile.bar.lat.txt
+fix		3 all ave/chunk 1 10000 10000 layers c_stress_atom[1] file chunk/profile.bar.sxx.txt
+fix             4 all ave/chunk 1 10000 10000 layers c_stress_atom[2] file chunk/profile.bar.syy.txt
+fix             5 all ave/chunk 1 10000 10000 layers c_stress_atom[3] file chunk/profile.bar.szz.txt
+fix             6 all ave/chunk 1 10000 10000 layers c_stress_atom[4] file chunk/profile.bar.sxy.txt
+fix             7 all ave/chunk 1 10000 10000 layers c_stress_atom[5] file chunk/profile.bar.sxz.txt
+fix             8 all ave/chunk 1 10000 10000 layers c_stress_atom[6] file chunk/profile.bar.syz.txt
+fix             9 all ave/chunk 1 10000 10000 layers density/mass file chunk/profile.bar.density.txt
+fix             10 all ave/chunk 1 10000 10000 layers c_vx file chunk/profile.bar.vx.txt
+fix             11 all ave/time 1 10000 10000 c_temp_no_COM[1] file chunk/profile.bar.lat_com.txt mode vector
+fix		virial all print 10000 "${n} ${kf} ${sxx} ${syy} ${szz} ${sxy} ${sxz} ${syz}" file chunk/virial-stress-laser.txt screen no
+
+##-----------LASER PULSE SHOCKWAVE---------------##
+
+variable	dt_latt equal 0.0001
+variable	loop equal 2
+variable	dt_elec equal ${dt_latt}/${loop} 
+variable        laser_run equal ${pulse_time}*4/${dt_latt}
+variable        post_laser_run equal ${post_pulse_time}/${dt_latt}
+
+timestep        ${dt_latt}
+
+fix             12 all laser F ${fluence} R ${reflectivity} Lp ${pulse_depth} t0 ${pulse_time} lambda ${lambda} x ${x_front_laser}
+fix             13 all laser_reverse F ${fluence} R ${reflectivity} Lp ${pulse_depth} t0 ${pulse_time} lambda ${lambda} x ${x_reverse_laser}
+fix 		14 all ttemp K0 ${K0} dt ${dt_elec} Tmax ${Tmax} loop ${loop} rdcut 3.0 G ${G} Vatom ${vatom} lambda ${lambda}
+fix             15 all nve
+fix             16 all balance 1000 1.1 rcb
+
+dump 		2 all custom 10000 dump.laser id x y z mxe_temperature
+
+thermo          50
+thermo_modify   lost ignore flush yes
+restart		50000 restart.large_scale_laser_*
+run		${laser_run}
+
+unfix           12
+unfix		13
+run             ${post_laser_run}
