@@ -2,7 +2,7 @@ This package implements the local two-temperature model in molecular dynamics (l
 The package was developed by Mauricio Ponga and Mohammad W. Ullah at the University of British Columbia (2018). 
 The atomic style and set file are part of a much bigger implementation (LAMMPS-MXE).
 
-Please refer to [our paper on the original formulation of the local two-temperature model](https://iopscience.iop.org/article/10.1088/1361-651X/ab309f/meta) for further details.
+Please refer to our paper on the original formulation of the local two-temperature model: https://iopscience.iop.org/article/10.1088/1361-651X/ab309f/meta for further details.
 
 This package contains fixes that have been modified and/or created to incorporate the two
 laser pulse shock dynamics ("fix_laser.cpp" and "fix_laser_reverse.cpp"). An
